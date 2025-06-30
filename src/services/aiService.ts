@@ -18,8 +18,27 @@ class AIService {
   }
 
   private getCacheKey(prompt: string): string {
-    // Create a hash-like key from the prompt for caching
-    return btoa(prompt.substring(0, 100)).replace(/[^a-zA-Z0-9]/g, '');
+    // Create a unique hash-like key from the entire prompt for caching
+    // Use the full prompt with proper encoding to ensure uniqueness
+    const fullPromptKey = encodeURIComponent(prompt.trim());
+    
+    // Add timestamp component to make keys more unique and prevent collisions
+    const promptHash = this.simpleHash(fullPromptKey);
+    
+    return `ai_${promptHash}_${fullPromptKey.length}`;
+  }
+
+  private simpleHash(str: string): string {
+    let hash = 0;
+    if (str.length === 0) return hash.toString();
+    
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    return Math.abs(hash).toString(36);
   }
 
   private isValidCache<T>(entry: CacheEntry<T>): boolean {
