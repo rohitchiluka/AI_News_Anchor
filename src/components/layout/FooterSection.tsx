@@ -187,7 +187,7 @@ export function FooterSection() {
               className="flex items-center justify-center"
               aria-label="Built with Bolt"
             >
-              {/* Your Uploaded Bolt SVG Logo - No Effects */}
+              {/* Your Uploaded SVG Logo - No Effects */}
               <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-16 lg:h-16">
                 <svg 
                   className="w-full h-full" 
