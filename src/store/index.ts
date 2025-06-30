@@ -159,6 +159,34 @@ export const useAppStore = create<AppState>()(
         messages: state.messages.slice(-50), // Keep only last 50 messages
         selectedCategory: state.selectedCategory,
       }),
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          
+          try {
+            return JSON.parse(str, (key, value) => {
+              // Convert timestamp strings back to Date objects
+              if (key === 'timestamp' && typeof value === 'string') {
+                const date = new Date(value);
+                return isNaN(date.getTime()) ? new Date() : date;
+              }
+              return value;
+            });
+          } catch (error) {
+            console.error('Error parsing stored data:', error);
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch (error) {
+            console.error('Error storing data:', error);
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
     }
   )
 );
