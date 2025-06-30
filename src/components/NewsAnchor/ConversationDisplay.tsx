@@ -20,27 +20,76 @@ interface ConversationDisplayProps {
 const ConversationDisplay = React.memo(function ConversationDisplay({ messages }: ConversationDisplayProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastMessageCountRef = useRef(messages.length);
+  const userScrolledUpRef = useRef(false);
   
   // Get state from store
   const isProcessing = useAppStore((state) => state.isProcessing);
   const streamingContent = useAppStore((state) => state.streamingContent);
 
-  // Smart auto-scroll: only scroll to bottom for new messages or streaming
+  // Check if user is near the bottom of the conversation
+  const isNearBottom = (): boolean => {
+    if (!containerRef.current) return true;
+    
+    const container = containerRef.current;
+    const threshold = 100; // pixels from bottom
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    
+    return distanceFromBottom <= threshold;
+  };
+
+  // Handle scroll events to detect if user has scrolled up
+  const handleScroll = () => {
+    if (!containerRef.current) return;
+    
+    const wasNearBottom = isNearBottom();
+    userScrolledUpRef.current = !wasNearBottom;
+  };
+
+  // Auto-scroll logic with improved conditions
   useEffect(() => {
-    if (messagesEndRef.current && containerRef.current) {
-      const container = containerRef.current;
-      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-      
-      // Auto-scroll if user is near the bottom or if it's a new message
-      if (isNearBottom || streamingContent || isProcessing) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!messagesEndRef.current || !containerRef.current) return;
+
+    const hasNewMessage = messages.length > lastMessageCountRef.current;
+    const isUserNearBottom = isNearBottom();
+    const hasNotScrolledUp = !userScrolledUpRef.current;
+
+    // Auto-scroll conditions:
+    // 1. New message arrived AND user is near bottom
+    // 2. Streaming content is being displayed AND user hasn't scrolled up
+    // 3. Processing started (new user message) - always scroll for user messages
+    const shouldAutoScroll = 
+      (hasNewMessage && isUserNearBottom) ||
+      (streamingContent && hasNotScrolledUp) ||
+      (isProcessing && hasNewMessage);
+
+    if (shouldAutoScroll) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end'
+      });
+      // Reset the scroll flag when we auto-scroll
+      userScrolledUpRef.current = false;
+    }
+
+    // Update the last message count
+    lastMessageCountRef.current = messages.length;
+  }, [messages, streamingContent, isProcessing]);
+
+  // Reset scroll flag when new user message is added (always scroll for user messages)
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.type === 'user') {
+        userScrolledUpRef.current = false;
       }
     }
-  }, [messages, streamingContent, isProcessing]);
+  }, [messages]);
 
   return (
     <div 
       ref={containerRef}
+      onScroll={handleScroll}
       className="h-full overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6"
       style={{ 
         scrollBehavior: 'smooth',
